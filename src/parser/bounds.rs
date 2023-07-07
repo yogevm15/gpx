@@ -4,10 +4,11 @@ use geo_types::{Coord, Rect};
 use xml::reader::XmlEvent;
 
 use crate::errors::{GpxError, GpxResult};
-use crate::parser::{verify_starting_tag, Context};
+use crate::parser::{Context, verify_starting_tag};
+use crate::parser::extensions::WaypointExtensions;
 
 /// consume consumes a bounds element until it ends.
-pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<Rect<f64>> {
+pub fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>) -> GpxResult<Rect<f64>> {
     let attributes = verify_starting_tag(context, "bounds")?;
     // get required bounds
     let minlat = attributes
@@ -72,8 +73,9 @@ pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<Rect<f64>> {
 
 #[cfg(test)]
 mod tests {
-    use super::consume;
     use crate::GpxVersion;
+
+    use super::consume;
 
     #[test]
     fn consume_bounds() {

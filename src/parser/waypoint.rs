@@ -5,12 +5,13 @@ use std::io::Read;
 use geo_types::Point;
 use xml::reader::XmlEvent;
 
-use crate::errors::{GpxError, GpxResult};
-use crate::parser::{extensions, fix, link, string, time, verify_starting_tag, Context};
 use crate::{GpxVersion, Waypoint};
+use crate::errors::{GpxError, GpxResult};
+use crate::parser::{Context, fix, link, string, time, verify_starting_tag};
+use crate::parser::extensions::WaypointExtensions;
 
 /// consume consumes a GPX waypoint from the `reader` until it ends.
-pub fn consume<R: Read>(context: &mut Context<R>, tagname: &'static str) -> GpxResult<Waypoint> {
+pub fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>, tagname: &'static str) -> GpxResult<Waypoint<E>> {
     let attributes = verify_starting_tag(context, tagname)?;
 
     // get required latitude and longitude
@@ -49,7 +50,7 @@ pub fn consume<R: Read>(context: &mut Context<R>, tagname: &'static str) -> GpxR
         ));
     };
 
-    let mut waypoint: Waypoint = Waypoint::new(Point::new(longitude, latitude));
+    let mut waypoint: Waypoint<E> = Waypoint::new(Point::new(longitude, latitude));
 
     loop {
         let next_event = {
@@ -112,7 +113,9 @@ pub fn consume<R: Read>(context: &mut Context<R>, tagname: &'static str) -> GpxR
                     }
 
                     // Finally the GPX 1.1 extensions
-                    "extensions" => extensions::consume(context)?,
+                    "extensions" => {
+                        waypoint.extensions = context.consume_waypoint_extensions()?
+                    }
                     child => {
                         return Err(GpxError::InvalidChildElement(
                             String::from(child),
@@ -144,8 +147,9 @@ pub fn consume<R: Read>(context: &mut Context<R>, tagname: &'static str) -> GpxR
 mod tests {
     use geo_types::Point;
 
-    use super::consume;
     use crate::{Fix, GpxVersion};
+
+    use super::consume;
 
     #[test]
     fn consume_waypoint() {

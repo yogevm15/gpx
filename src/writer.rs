@@ -5,10 +5,11 @@ use std::io::Write;
 use geo_types::Rect;
 use xml::writer::{EmitterConfig, EventWriter, XmlEvent};
 
+use crate::{Gpx, GpxVersion};
 use crate::errors::{GpxError, GpxResult};
+use crate::parser::extensions::WaypointExtensions;
 use crate::parser::time::Time;
 use crate::types::*;
-use crate::{Gpx, GpxVersion};
 
 /// Writes an activity to GPX format.
 ///
@@ -21,14 +22,15 @@ use crate::{Gpx, GpxVersion};
 /// use gpx::write;
 /// use gpx::Gpx;
 /// use gpx::GpxVersion;
+/// use gpx::parser::extensions::EmptyExtensions;
 ///
-/// let mut data : Gpx = Default::default();
+/// let mut data : Gpx<EmptyExtensions> = Default::default();
 /// data.version = GpxVersion::Gpx11;
 ///
 /// // You can give it anything that implements `std::io::Write`.
 /// write(&data, std::io::stdout()).unwrap();
 /// ```
-pub fn write<W: Write>(gpx: &Gpx, writer: W) -> GpxResult<()> {
+pub fn write<W: Write, E: WaypointExtensions + Default>(gpx: &Gpx<E>, writer: W) -> GpxResult<()> {
     let mut writer = EmitterConfig::new()
         .perform_indent(true)
         .create_writer(writer);
@@ -47,8 +49,9 @@ pub fn write<W: Write>(gpx: &Gpx, writer: W) -> GpxResult<()> {
 /// use gpx::Gpx;
 /// use gpx::GpxVersion;
 /// use xml::writer::EmitterConfig;
+/// use gpx::parser::extensions::EmptyExtensions;
 ///
-/// let mut data : Gpx = Default::default();
+/// let mut data : Gpx<EmptyExtensions> = Default::default();
 /// data.version = GpxVersion::Gpx11;
 /// let mut writer = EmitterConfig::new()
 ///         .perform_indent(false)
@@ -56,7 +59,7 @@ pub fn write<W: Write>(gpx: &Gpx, writer: W) -> GpxResult<()> {
 ///
 /// write_with_event_writer(&data, &mut writer).unwrap();
 /// ```
-pub fn write_with_event_writer<W: Write>(gpx: &Gpx, writer: &mut EventWriter<W>) -> GpxResult<()> {
+pub fn write_with_event_writer<W: Write, E: WaypointExtensions + Default>(gpx: &Gpx<E>, writer: &mut EventWriter<W>) -> GpxResult<()> {
     let creator: &str = gpx
         .creator
         .as_deref()
@@ -83,9 +86,9 @@ pub fn write_with_event_writer<W: Write>(gpx: &Gpx, writer: &mut EventWriter<W>)
 }
 
 fn write_xml_event<'a, W, E>(event: E, writer: &mut EventWriter<W>) -> GpxResult<()>
-where
-    W: Write,
-    E: Into<XmlEvent<'a>>,
+    where
+        W: Write,
+        E: Into<XmlEvent<'a>>,
 {
     Ok(writer.write(event)?)
 }
@@ -106,7 +109,7 @@ fn version_to_xml_url(version: GpxVersion) -> GpxResult<&'static str> {
     }
 }
 
-fn write_metadata<W: Write>(gpx: &Gpx, writer: &mut EventWriter<W>) -> GpxResult<()> {
+fn write_metadata<W: Write, E: WaypointExtensions + Default>(gpx: &Gpx<E>, writer: &mut EventWriter<W>) -> GpxResult<()> {
     match gpx.version {
         GpxVersion::Gpx10 => write_gpx10_metadata(gpx, writer),
         GpxVersion::Gpx11 => write_gpx11_metadata(gpx, writer),
@@ -114,7 +117,7 @@ fn write_metadata<W: Write>(gpx: &Gpx, writer: &mut EventWriter<W>) -> GpxResult
     }
 }
 
-fn write_gpx10_metadata<W: Write>(gpx: &Gpx, writer: &mut EventWriter<W>) -> GpxResult<()> {
+fn write_gpx10_metadata<W: Write, E: WaypointExtensions + Default>(gpx: &Gpx<E>, writer: &mut EventWriter<W>) -> GpxResult<()> {
     if gpx.metadata.is_none() {
         return Ok(());
     }
@@ -135,7 +138,7 @@ fn write_gpx10_metadata<W: Write>(gpx: &Gpx, writer: &mut EventWriter<W>) -> Gpx
     Ok(())
 }
 
-fn write_gpx11_metadata<W: Write>(gpx: &Gpx, writer: &mut EventWriter<W>) -> GpxResult<()> {
+fn write_gpx11_metadata<W: Write, E: WaypointExtensions + Default>(gpx: &Gpx<E>, writer: &mut EventWriter<W>) -> GpxResult<()> {
     if gpx.metadata.is_none() {
         return Ok(());
     }
@@ -293,7 +296,7 @@ fn write_fix_if_exists<W: Write>(fix: &Option<Fix>, writer: &mut EventWriter<W>)
     Ok(())
 }
 
-fn write_track<W: Write>(track: &Track, writer: &mut EventWriter<W>) -> GpxResult<()> {
+fn write_track<W: Write, E: WaypointExtensions + Default>(track: &Track<E>, writer: &mut EventWriter<W>) -> GpxResult<()> {
     write_xml_event(XmlEvent::start_element("trk"), writer)?;
     write_string_if_exists("name", &track.name, writer)?;
     write_string_if_exists("cmt", &track.comment, writer)?;
@@ -310,7 +313,7 @@ fn write_track<W: Write>(track: &Track, writer: &mut EventWriter<W>) -> GpxResul
     Ok(())
 }
 
-fn write_route<W: Write>(route: &Route, writer: &mut EventWriter<W>) -> GpxResult<()> {
+fn write_route<W: Write, E: WaypointExtensions + Default>(route: &Route<E>, writer: &mut EventWriter<W>) -> GpxResult<()> {
     write_xml_event(XmlEvent::start_element("rte"), writer)?;
     write_string_if_exists("name", &route.name, writer)?;
     write_string_if_exists("cmt", &route.comment, writer)?;
@@ -328,8 +331,8 @@ fn write_route<W: Write>(route: &Route, writer: &mut EventWriter<W>) -> GpxResul
     Ok(())
 }
 
-fn write_track_segment<W: Write>(
-    segment: &TrackSegment,
+fn write_track_segment<W: Write, E: WaypointExtensions + Default>(
+    segment: &TrackSegment<E>,
     writer: &mut EventWriter<W>,
 ) -> GpxResult<()> {
     write_xml_event(XmlEvent::start_element("trkseg"), writer)?;
@@ -340,9 +343,9 @@ fn write_track_segment<W: Write>(
     Ok(())
 }
 
-fn write_waypoint<W: Write>(
+fn write_waypoint<W: Write, E: WaypointExtensions + Default>(
     tagname: &str,
-    waypoint: &Waypoint,
+    waypoint: &Waypoint<E>,
     writer: &mut EventWriter<W>,
 ) -> GpxResult<()> {
     write_xml_event(

@@ -3,11 +3,12 @@
 use std::io::Read;
 
 use crate::errors::GpxResult;
-use crate::parser::{string, Context};
+use crate::parser::{Context, string};
+use crate::parser::extensions::WaypointExtensions;
 use crate::types::Fix;
 
 /// consume consumes an element as a fix.
-pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<Fix> {
+pub fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>) -> GpxResult<Fix> {
     let fix_string = string::consume(context, "fix", false)?;
 
     let fix = match fix_string.as_ref() {
@@ -24,8 +25,9 @@ pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<Fix> {
 
 #[cfg(test)]
 mod tests {
-    use super::consume;
     use crate::{Fix, GpxVersion};
+
+    use super::consume;
 
     #[test]
     fn consume_fix() {

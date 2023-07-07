@@ -5,12 +5,13 @@ use std::io::Read;
 use xml::reader::XmlEvent;
 
 use crate::errors::{GpxError, GpxResult};
-use crate::parser::{string, verify_starting_tag, Context};
 use crate::GpxCopyright;
+use crate::parser::{Context, string, verify_starting_tag};
+use crate::parser::extensions::WaypointExtensions;
 
 /// consume consumes a GPX copyright from the `reader` until it ends.
 /// When it returns, the reader will be at the element after the end GPX copyright tag.
-pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<GpxCopyright> {
+pub fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>) -> GpxResult<GpxCopyright> {
     let mut copyright: GpxCopyright = Default::default();
     let attributes = verify_starting_tag(context, "copyright")?;
     let attr = attributes
@@ -63,8 +64,9 @@ pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<GpxCopyright> {
 
 #[cfg(test)]
 mod tests {
-    use super::consume;
     use crate::GpxVersion;
+
+    use super::consume;
 
     #[test]
     fn consume_simple_copyright() {

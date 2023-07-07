@@ -1,9 +1,11 @@
 //! generic types for GPX
 
-pub use crate::parser::time::Time;
 use geo_types::{Geometry, LineString, MultiLineString, Point, Rect};
 #[cfg(feature = "use-serde")]
 use serde::{Deserialize, Serialize};
+
+use crate::parser::extensions::WaypointExtensions;
+pub use crate::parser::time::Time;
 
 /// Allowable GPX versions. Currently, only GPX 1.0 and GPX 1.1 are accepted.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -25,7 +27,7 @@ impl std::fmt::Display for GpxVersion {
 /// Gpx is the root element in the XML file.
 #[derive(Clone, Default, Debug, PartialEq)]
 #[cfg_attr(feature = "use-serde", derive(Serialize, Deserialize))]
-pub struct Gpx {
+pub struct Gpx<E: WaypointExtensions + Default> {
     /// Version of the Gpx file.
     pub version: GpxVersion,
 
@@ -36,13 +38,13 @@ pub struct Gpx {
     pub metadata: Option<Metadata>,
 
     /// A list of waypoints.
-    pub waypoints: Vec<Waypoint>,
+    pub waypoints: Vec<Waypoint<E>>,
 
     /// A list of tracks.
-    pub tracks: Vec<Track>,
+    pub tracks: Vec<Track<E>>,
 
     /// A list of routes with a list of point-by-point directions
-    pub routes: Vec<Route>,
+    pub routes: Vec<Route<E>>,
 }
 
 /// Information about the copyright holder and any license governing use of this file.
@@ -94,7 +96,7 @@ pub struct Metadata {
 /// Route represents an ordered list of waypoints representing a series of turn points leading to a destination.
 #[derive(Clone, Default, Debug, PartialEq)]
 #[cfg_attr(feature = "use-serde", derive(Serialize, Deserialize))]
-pub struct Route {
+pub struct Route<E: WaypointExtensions + Default> {
     /// GPS name of route.
     pub name: Option<String>,
 
@@ -119,10 +121,10 @@ pub struct Route {
 
     /// Each Waypoint holds the coordinates, elevation, timestamp, and metadata
     /// for a single point in a track.
-    pub points: Vec<Waypoint>,
+    pub points: Vec<Waypoint<E>>,
 }
 
-impl Route {
+impl<E: WaypointExtensions + Default> Route<E> {
     /// Gives the linestring of the segment's points, the sequence of points that
     /// comprises the track segment.
     pub fn linestring(&self) -> LineString<f64> {
@@ -137,21 +139,21 @@ impl Route {
     ///
     /// use gpx::{Route, Waypoint};
     /// use geo_types::Point;
-    ///
+    /// use gpx::parser::extensions::EmptyExtensions;
     /// fn main() {
-    ///     let mut route: Route = Route::new();
+    ///     let mut route: Route<EmptyExtensions> = Route::new();
     ///
     ///     let point = Waypoint::new(Point::new(-121.97, 37.24));
     ///     route.points.push(point);
     /// }
     ///
-    pub fn new() -> Route {
+    pub fn new() -> Route<E> {
         Default::default()
     }
 }
 
-impl From<Route> for Geometry<f64> {
-    fn from(route: Route) -> Geometry<f64> {
+impl<E: WaypointExtensions + Default> From<Route<E>> for Geometry<f64> {
+    fn from(route: Route<E>) -> Geometry<f64> {
         Geometry::LineString(route.linestring())
     }
 }
@@ -159,7 +161,7 @@ impl From<Route> for Geometry<f64> {
 /// Track represents an ordered list of points describing a path.
 #[derive(Clone, Default, Debug, PartialEq)]
 #[cfg_attr(feature = "use-serde", derive(Serialize, Deserialize))]
-pub struct Track {
+pub struct Track<E: WaypointExtensions + Default> {
     /// GPS name of track.
     pub name: Option<String>,
 
@@ -186,12 +188,12 @@ pub struct Track {
     /// connected in order. To represent a single GPS track where GPS reception
     /// was lost, or the GPS receiver was turned off, start a new Track Segment
     /// for each continuous span of track data.
-    pub segments: Vec<TrackSegment>,
+    pub segments: Vec<TrackSegment<E>>,
     /* extensions */
     /* trkSeg */
 }
 
-impl Track {
+impl<E: WaypointExtensions + Default> Track<E> {
     /// Gives the multi-linestring that this track represents, which is multiple
     /// linestrings.
     pub fn multilinestring(&self) -> MultiLineString<f64> {
@@ -202,18 +204,19 @@ impl Track {
     ///
     /// ```
     /// use gpx::{Track, TrackSegment};
+    /// use gpx::parser::extensions::EmptyExtensions;
     ///
-    /// let mut track: Track = Track::new();
+    /// let mut track: Track<EmptyExtensions> = Track::new();
     ///
     /// let segment = TrackSegment::new();
     /// track.segments.push(segment);
-    pub fn new() -> Track {
+    pub fn new() -> Track<E> {
         Default::default()
     }
 }
 
-impl From<Track> for Geometry<f64> {
-    fn from(track: Track) -> Geometry<f64> {
+impl<E: WaypointExtensions + Default> From<Track<E>> for Geometry<f64> {
+    fn from(track: Track<E>) -> Geometry<f64> {
         Geometry::MultiLineString(track.multilinestring())
     }
 }
@@ -226,14 +229,14 @@ impl From<Track> for Geometry<f64> {
 /// for each continuous span of track data.
 #[derive(Clone, Default, Debug, PartialEq)]
 #[cfg_attr(feature = "use-serde", derive(Serialize, Deserialize))]
-pub struct TrackSegment {
+pub struct TrackSegment<E: WaypointExtensions + Default> {
     /// Each Waypoint holds the coordinates, elevation, timestamp, and metadata
     /// for a single point in a track.
-    pub points: Vec<Waypoint>,
+    pub points: Vec<Waypoint<E>>,
     /* extensions */
 }
 
-impl TrackSegment {
+impl<E: WaypointExtensions + Default> TrackSegment<E> {
     /// Gives the linestring of the segment's points, the sequence of points that
     /// comprises the track segment.
     pub fn linestring(&self) -> LineString<f64> {
@@ -248,20 +251,20 @@ impl TrackSegment {
     ///
     /// use gpx::{TrackSegment, Waypoint};
     /// use geo_types::Point;
-    ///
+    /// use gpx::parser::extensions::EmptyExtensions;
     /// fn main() {
-    ///     let mut trkseg: TrackSegment = TrackSegment::new();
+    ///     let mut trkseg: TrackSegment<EmptyExtensions> = TrackSegment::new();
     ///
     ///     let point = Waypoint::new(Point::new(-121.97, 37.24));
     ///     trkseg.points.push(point);
     /// }
-    pub fn new() -> TrackSegment {
+    pub fn new() -> TrackSegment<E> {
         Default::default()
     }
 }
 
-impl From<TrackSegment> for Geometry<f64> {
-    fn from(track_segment: TrackSegment) -> Geometry<f64> {
+impl<E: WaypointExtensions + Default> From<TrackSegment<E>> for Geometry<f64> {
+    fn from(track_segment: TrackSegment<E>) -> Geometry<f64> {
         Geometry::LineString(track_segment.linestring())
     }
 }
@@ -283,7 +286,7 @@ impl Default for GpxPoint {
 /// map.
 #[derive(Clone, Default, Debug, PartialEq)]
 #[cfg_attr(feature = "use-serde", derive(Serialize, Deserialize))]
-pub struct Waypoint {
+pub struct Waypoint<E: WaypointExtensions + Default> {
     /// The geographical point.
     point: GpxPoint,
 
@@ -358,9 +361,11 @@ pub struct Waypoint {
     /// ID of DGPS station used in differential correction, in the range [0, 1023].
     pub dgpsid: Option<u16>,
     // <extensions> extensionsType </extensions> [0..1] ?
+
+    pub extensions: E::ExtensionsValue,
 }
 
-impl Waypoint {
+impl<E: WaypointExtensions + Default> Waypoint<E> {
     /// Gives the geographical point of the waypoint.
     ///
     /// ```
@@ -398,7 +403,7 @@ impl Waypoint {
     ///     wpt.elevation = Some(553.21);
     /// }
     /// ```
-    pub fn new(point: Point<f64>) -> Waypoint {
+    pub fn new(point: Point<f64>) -> Waypoint<E> {
         Waypoint {
             point: GpxPoint(point),
             ..Default::default()
@@ -406,8 +411,8 @@ impl Waypoint {
     }
 }
 
-impl From<Waypoint> for Geometry<f64> {
-    fn from(waypoint: Waypoint) -> Geometry<f64> {
+impl<E: WaypointExtensions + Default> From<Waypoint<E>> for Geometry<f64> {
+    fn from(waypoint: Waypoint<E>) -> Geometry<f64> {
         Geometry::Point(waypoint.point())
     }
 }

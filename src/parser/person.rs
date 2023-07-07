@@ -5,10 +5,11 @@ use std::io::Read;
 use xml::reader::XmlEvent;
 
 use crate::errors::{GpxError, GpxResult};
-use crate::parser::{email, link, string, verify_starting_tag, Context};
+use crate::parser::{Context, email, link, string, verify_starting_tag};
+use crate::parser::extensions::WaypointExtensions;
 use crate::Person;
 
-pub fn consume<R: Read>(context: &mut Context<R>, tagname: &'static str) -> GpxResult<Person> {
+pub fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>, tagname: &'static str) -> GpxResult<Person> {
     let mut person: Person = Default::default();
     verify_starting_tag(context, tagname)?;
 
@@ -56,8 +57,9 @@ pub fn consume<R: Read>(context: &mut Context<R>, tagname: &'static str) -> GpxR
 
 #[cfg(test)]
 mod tests {
-    use super::consume;
     use crate::GpxVersion;
+
+    use super::consume;
 
     #[test]
     fn consume_whole_person() {

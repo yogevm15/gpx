@@ -5,12 +5,13 @@ use std::io::Read;
 use xml::reader::XmlEvent;
 
 use crate::errors::{GpxError, GpxResult};
-use crate::parser::{verify_starting_tag, Context};
+use crate::parser::{Context, verify_starting_tag};
+use crate::parser::extensions::WaypointExtensions;
 
 /// consume consumes a GPX email from the `reader` until it ends.
 /// When it returns, the reader will be at the element after the end GPX email
 /// tag.
-pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<String> {
+pub fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>) -> GpxResult<String> {
     let attributes = verify_starting_tag(context, "email")?;
     // get required id and domain attributes
     let id = attributes
@@ -53,8 +54,9 @@ pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::consume;
     use crate::GpxVersion;
+
+    use super::consume;
 
     #[test]
     fn consume_simple_email() {
@@ -110,7 +112,7 @@ mod tests {
             "<email id=\"id\" domain=\"domain\"><child /></email>",
             GpxVersion::Gpx11
         )
-        .unwrap_err();
+            .unwrap_err();
 
         assert_eq!(err.to_string(), "invalid child element `child` in `email`");
     }

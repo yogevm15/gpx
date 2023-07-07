@@ -5,12 +5,13 @@ use std::io::Read;
 use xml::reader::XmlEvent;
 
 use crate::errors::{GpxError, GpxResult};
-use crate::parser::{
-    bounds, copyright, extensions, link, person, string, time, verify_starting_tag, Context,
-};
 use crate::Metadata;
+use crate::parser::{
+    bounds, Context, copyright, extensions, link, person, string, time, verify_starting_tag,
+};
+use crate::parser::extensions::WaypointExtensions;
 
-pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<Metadata> {
+pub fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>) -> GpxResult<Metadata> {
     let mut metadata: Metadata = Default::default();
     verify_starting_tag(context, "metadata")?;
 
@@ -53,7 +54,7 @@ pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<Metadata> {
                     metadata.copyright = Some(copyright::consume(context)?);
                 }
                 "extensions" => {
-                    extensions::consume(context)?;
+                    extensions::EmptyExtensions::consume(context)?;
                 }
                 child => {
                     return Err(GpxError::InvalidChildElement(
@@ -83,10 +84,11 @@ pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<Metadata> {
 
 #[cfg(test)]
 mod tests {
+    use time::{Date, Month, PrimitiveDateTime, Time};
+
+    use crate::GpxVersion;
 
     use super::consume;
-    use crate::GpxVersion;
-    use time::{Date, Month, PrimitiveDateTime, Time};
 
     #[test]
     fn consume_empty() {
@@ -151,8 +153,8 @@ mod tests {
             Date::from_calendar_date(2017, Month::August, 16).unwrap(),
             Time::from_hms_milli(4, 3, 33, 735).unwrap(),
         )
-        .assume_utc()
-        .into();
+            .assume_utc()
+            .into();
 
         assert_eq!(result.time.unwrap(), expect);
 

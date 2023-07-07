@@ -1,15 +1,17 @@
 //! gpx handles parsing of GPX elements.
 
-use geo_types::Rect;
 use std::io::Read;
+
+use geo_types::Rect;
 use xml::reader::XmlEvent;
 
-use crate::errors::{GpxError, GpxResult};
-use crate::parser::time::Time;
-use crate::parser::{
-    bounds, metadata, route, string, time, track, verify_starting_tag, waypoint, Context,
-};
 use crate::{Gpx, GpxVersion, Link, Metadata, Person};
+use crate::errors::{GpxError, GpxResult};
+use crate::parser::{
+    bounds, Context, metadata, route, string, time, track, verify_starting_tag, waypoint,
+};
+use crate::parser::extensions::WaypointExtensions;
+use crate::parser::time::Time;
 
 use super::extensions;
 
@@ -23,8 +25,8 @@ fn version_string_to_version(version_str: &str) -> GpxResult<GpxVersion> {
 }
 
 /// consume consumes an entire GPX element.
-pub fn consume<R: Read>(context: &mut Context<R>) -> Result<Gpx, GpxError> {
-    let mut gpx: Gpx = Default::default();
+pub fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>) -> Result<Gpx<E>, GpxError> {
+    let mut gpx: Gpx<E> = Default::default();
 
     let mut author: Option<String> = None;
     let mut url: Option<String> = None;
@@ -104,7 +106,7 @@ pub fn consume<R: Read>(context: &mut Context<R>) -> Result<Gpx, GpxError> {
                     keywords = Some(string::consume(context, "keywords", true)?);
                 }
                 "extensions" => {
-                    extensions::consume(context)?;
+                    extensions::EmptyExtensions::consume(context)?;
                 }
                 child => {
                     return Err(GpxError::InvalidChildElement(String::from(child), "gpx"));
@@ -161,8 +163,9 @@ pub fn consume<R: Read>(context: &mut Context<R>) -> Result<Gpx, GpxError> {
 mod tests {
     use geo_types::Point;
 
-    use super::consume;
     use crate::{errors::GpxError, GpxVersion};
+
+    use super::consume;
 
     #[test]
     fn consume_gpx() {

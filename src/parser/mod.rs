@@ -1,5 +1,17 @@
 //! Handles parsing GPX format.
 
+use std::io::Read;
+use std::iter::Peekable;
+use std::marker::PhantomData;
+
+use xml::{EventReader, ParserConfig};
+use xml::attribute::OwnedAttribute;
+use xml::reader::{Events, XmlEvent};
+
+use crate::errors::{GpxError, GpxResult};
+use crate::parser::extensions::WaypointExtensions;
+use crate::types::GpxVersion;
+
 // Just a shared macro for testing 'consume'.
 #[cfg(test)]
 #[macro_export]
@@ -47,33 +59,28 @@ pub mod track;
 pub mod tracksegment;
 pub mod waypoint;
 
-use std::io::Read;
-use std::iter::Peekable;
-
-use xml::attribute::OwnedAttribute;
-use xml::reader::{Events, XmlEvent};
-use xml::{EventReader, ParserConfig};
-
-use crate::errors::GpxError;
-use crate::types::GpxVersion;
-
-pub struct Context<R: Read> {
+pub struct Context<R: Read, E: WaypointExtensions + Default> {
     reader: Peekable<Events<R>>,
     version: GpxVersion,
+    phantom: PhantomData<E>,
 }
 
-impl<R: Read> Context<R> {
-    pub fn new(reader: Peekable<Events<R>>, version: GpxVersion) -> Context<R> {
-        Context { reader, version }
+impl<R: Read, E: WaypointExtensions + Default> Context<R, E> {
+    pub fn new(reader: Peekable<Events<R>>, version: GpxVersion) -> Context<R, E> {
+        Context { reader, version, phantom: Default::default() }
     }
 
     pub fn reader(&mut self) -> &mut Peekable<Events<R>> {
         &mut self.reader
     }
+
+    pub fn consume_waypoint_extensions(&mut self) -> GpxResult<E::ExtensionsValue> {
+        E::consume(self)
+    }
 }
 
-pub fn verify_starting_tag<R: Read>(
-    context: &mut Context<R>,
+pub fn verify_starting_tag<R: Read, E: WaypointExtensions + Default>(
+    context: &mut Context<R, E>,
     local_name: &'static str,
 ) -> Result<Vec<OwnedAttribute>, GpxError> {
     //makes sure the specified starting tag is the next tag on the stream
@@ -82,8 +89,8 @@ pub fn verify_starting_tag<R: Read>(
         let next = context.reader.next();
         match next {
             Some(Ok(XmlEvent::StartElement {
-                name, attributes, ..
-            })) => {
+                        name, attributes, ..
+                    })) => {
                 if name.local_name != local_name {
                     return Err(GpxError::InvalidChildElement(name.local_name, local_name));
                 } else {
@@ -102,7 +109,7 @@ pub fn verify_starting_tag<R: Read>(
     }
 }
 
-pub(crate) fn create_context<R: Read>(reader: R, version: GpxVersion) -> Context<R> {
+pub(crate) fn create_context<R: Read, E: WaypointExtensions + Default>(reader: R, version: GpxVersion) -> Context<R, E> {
     let parser_config = ParserConfig {
         whitespace_to_characters: true, //convert Whitespace event to Characters
         cdata_to_characters: true,      //convert CData event to Characters

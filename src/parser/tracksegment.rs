@@ -5,12 +5,13 @@ use std::io::Read;
 use xml::reader::XmlEvent;
 
 use crate::errors::{GpxError, GpxResult};
-use crate::parser::{verify_starting_tag, waypoint, Context};
+use crate::parser::{Context, verify_starting_tag, waypoint};
+use crate::parser::extensions::WaypointExtensions;
 use crate::TrackSegment;
 
 /// consume consumes a GPX track segment from the `reader` until it ends.
-pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<TrackSegment> {
-    let mut segment: TrackSegment = Default::default();
+pub fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>) -> GpxResult<TrackSegment<E>> {
+    let mut segment: TrackSegment<E> = Default::default();
     verify_starting_tag(context, "trkseg")?;
 
     loop {
@@ -59,8 +60,9 @@ mod tests {
     use assert_approx_eq::assert_approx_eq;
     use geo::euclidean_length::EuclideanLength;
 
-    use super::consume;
     use crate::GpxVersion;
+
+    use super::consume;
 
     #[test]
     fn consume_full_trkseg() {

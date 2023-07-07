@@ -32,11 +32,11 @@
 //! ```
 
 // Export our type structs in the root, along with the read and write functions.
-pub use crate::reader::read;
+pub use crate::reader::{read, read_with_extensions};
 pub use crate::types::*;
 pub use crate::writer::{write, write_with_event_writer};
 
-mod parser;
+pub mod parser;
 mod reader;
 mod types;
 mod writer;

@@ -1,9 +1,10 @@
 //! errors provides error generics for the gpx parser.
 
 use std::num::{ParseFloatError, ParseIntError};
+
 use thiserror::Error;
 
-pub(crate) type GpxResult<T> = Result<T, GpxError>;
+pub type GpxResult<T> = Result<T, GpxError>;
 
 #[derive(Error, Debug)]
 #[non_exhaustive]

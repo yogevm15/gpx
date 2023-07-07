@@ -5,11 +5,12 @@ use std::io::Read;
 use xml::reader::XmlEvent;
 
 use crate::errors::{GpxError, GpxResult};
-use crate::parser::{verify_starting_tag, Context};
+use crate::parser::{Context, verify_starting_tag};
+use crate::parser::extensions::WaypointExtensions;
 
 /// consume consumes a single string as tag content.
-pub fn consume<R: Read>(
-    context: &mut Context<R>,
+pub fn consume<R: Read, E: WaypointExtensions + Default>(
+    context: &mut Context<R, E>,
     tagname: &'static str,
     allow_empty: bool,
 ) -> GpxResult<String> {
@@ -45,8 +46,9 @@ pub fn consume<R: Read>(
 
 #[cfg(test)]
 mod tests {
-    use super::consume;
     use crate::GpxVersion;
+
+    use super::consume;
 
     #[test]
     fn consume_simple_string() {

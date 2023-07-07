@@ -2,6 +2,7 @@
 // Feel free to read through these tests and their accompanying
 // .gpx files to see how usage might be.
 
+use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 
@@ -9,11 +10,9 @@ use assert_approx_eq::assert_approx_eq;
 use geo::algorithm::haversine_distance::HaversineDistance;
 use geo::euclidean_length::EuclideanLength;
 use geo_types::{Geometry, Point};
-
-use gpx::{read, Fix};
-use std::error::Error;
-
 use time::{Date, Month, PrimitiveDateTime, Time};
+
+use gpx::{Fix, read};
 
 #[test]
 fn gpx_reader_read_test_badxml() {
@@ -43,8 +42,8 @@ fn gpx_reader_read_test_wikipedia() {
         Date::from_calendar_date(2009, Month::October, 17).unwrap(),
         Time::from_hms(22, 58, 43).unwrap(),
     )
-    .assume_utc()
-    .into();
+        .assume_utc()
+        .into();
 
     assert_eq!(metadata.time.unwrap(), expect);
 
@@ -93,8 +92,8 @@ fn gpx_reader_read_test_gpsies() {
         Date::from_calendar_date(2019, Month::September, 11).unwrap(),
         Time::from_hms(17, 8, 31).unwrap(),
     )
-    .assume_utc()
-    .into();
+        .assume_utc()
+        .into();
 
     assert_eq!(metadata.time.unwrap(), expect);
 
@@ -158,8 +157,8 @@ fn gpx_reader_read_test_garmin_activity() {
         Date::from_calendar_date(2017, Month::July, 29).unwrap(),
         Time::from_hms(14, 46, 35).unwrap(),
     )
-    .assume_utc()
-    .into();
+        .assume_utc()
+        .into();
 
     assert_eq!(metadata.time.unwrap(), expect);
 
@@ -201,15 +200,15 @@ fn gpx_reader_read_test_garmin_activity() {
             Date::from_calendar_date(2017, Month::July, 28).unwrap(),
             Time::from_hms(0, 0, 0).unwrap(),
         )
-        .assume_utc()
-        .into();
+            .assume_utc()
+            .into();
 
         let after = PrimitiveDateTime::new(
             Date::from_calendar_date(2017, Month::July, 30).unwrap(),
             Time::from_hms(0, 0, 0).unwrap(),
         )
-        .assume_utc()
-        .into();
+            .assume_utc()
+            .into();
 
         assert!(time > before);
         assert!(time < after);
@@ -385,6 +384,7 @@ fn gpx_reader_read_test_with_track_numbers() {
     assert_eq!(result.tracks.len(), 1);
     assert_eq!(result.tracks.first().unwrap().number, Some(1));
 }
+
 #[test]
 fn gpx_reader_read_test_caltopo_export() -> Result<(), Box<dyn Error>> {
     let file = File::open("tests/fixtures/caltopo-export.gpx")?;
@@ -410,8 +410,8 @@ fn gpx_reader_read_test_caltopo_export() -> Result<(), Box<dyn Error>> {
             Date::from_calendar_date(2019, Month::August, 12).unwrap(),
             Time::from_hms(23, 45, 00).unwrap(),
         )
-        .assume_utc()
-        .into(),
+            .assume_utc()
+            .into(),
     );
 
     assert_eq!(point.time, expect);
@@ -434,8 +434,8 @@ fn gpx_reader_read_test_caltopo_export() -> Result<(), Box<dyn Error>> {
             Date::from_calendar_date(2019, Month::August, 13).unwrap(),
             Time::from_hms(21, 46, 00).unwrap(),
         )
-        .assume_utc()
-        .into(),
+            .assume_utc()
+            .into(),
     );
 
     assert_eq!(point.time, expect);
@@ -461,8 +461,8 @@ fn garmin_with_extensions() {
         Date::from_calendar_date(2019, Month::May, 2).unwrap(),
         Time::from_hms(8, 53, 17).unwrap(),
     )
-    .assume_utc()
-    .into();
+        .assume_utc()
+        .into();
 
     assert_eq!(metadata.time.unwrap(), expect);
 

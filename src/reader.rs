@@ -2,9 +2,10 @@
 
 use std::io::Read;
 
+use crate::{Gpx, GpxVersion};
 use crate::errors::GpxResult;
 use crate::parser::{create_context, gpx};
-use crate::{Gpx, GpxVersion};
+use crate::parser::extensions::{EmptyExtensions, WaypointExtensions};
 
 /// Reads an activity in GPX format.
 ///
@@ -32,6 +33,11 @@ use crate::{Gpx, GpxVersion};
 ///     }
 /// }
 /// ```
-pub fn read<R: Read>(reader: R) -> GpxResult<Gpx> {
-    gpx::consume(&mut create_context(reader, GpxVersion::Unknown))
+pub fn read<R: Read>(reader: R) -> GpxResult<Gpx<EmptyExtensions>> {
+    read_with_extensions::<R, EmptyExtensions>(reader)
+}
+
+
+pub fn read_with_extensions<R: Read, E: WaypointExtensions + Default>(reader: R) -> GpxResult<Gpx<E>> {
+    gpx::consume(&mut create_context::<R, E>(reader, GpxVersion::Unknown))
 }

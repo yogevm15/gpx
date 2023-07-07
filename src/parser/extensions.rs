@@ -2,6 +2,7 @@
 
 // TODO: extensions are not implemented
 
+use std::fmt::Debug;
 use std::io::Read;
 
 use xml::reader::XmlEvent;
@@ -11,42 +12,53 @@ use crate::parser::Context;
 
 use super::verify_starting_tag;
 
-/// consume consumes a single string as tag content.
-pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<()> {
-    verify_starting_tag(context, "extensions")?;
+pub trait WaypointExtensions {
+    type ExtensionsValue: Clone + Debug + PartialEq + Default;
+    fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>) -> GpxResult<Self::ExtensionsValue>;
+}
 
-    let mut depth = 1;
-    for event in &mut context.reader {
-        match event? {
-            XmlEvent::StartElement { name, .. } => {
-                // I think its bad to hardcode the check on name == "extensions", because it is not a generic approach
-                // and treats inner tags that are called "extensions" differently from any other inner tags, like "a", "foo", "bar"
-                // It is correct, but feels wrong, maybe only a personal feeling
-                if name.local_name == "extensions" {
-                    depth += 1;
-                }
-            }
-            XmlEvent::EndElement { name } => {
-                if name.local_name == "extensions" {
-                    // pop one
-                    depth -= 1;
-                    if depth == 0 {
-                        return Ok(());
+#[derive(Debug, Default)]
+pub struct EmptyExtensions;
+
+impl WaypointExtensions for EmptyExtensions {
+    type ExtensionsValue = ();
+
+    /// consume consumes a single string as tag content.
+    fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>) -> GpxResult<Self::ExtensionsValue> {
+        verify_starting_tag(context, "extensions")?;
+
+        let mut depth = 1;
+        for event in &mut context.reader {
+            match event? {
+                XmlEvent::StartElement { name, .. } => {
+                    // I think its bad to hardcode the check on name == "extensions", because it is not a generic approach
+                    // and treats inner tags that are called "extensions" differently from any other inner tags, like "a", "foo", "bar"
+                    // It is correct, but feels wrong, maybe only a personal feeling
+                    if name.local_name == "extensions" {
+                        depth += 1;
                     }
                 }
+                XmlEvent::EndElement { name } => {
+                    if name.local_name == "extensions" {
+                        // pop one
+                        depth -= 1;
+                        if depth == 0 {
+                            return Ok(());
+                        }
+                    }
+                }
+                _ => {}
             }
-            _ => {}
         }
-    }
 
-    Err(GpxError::MissingClosingTag("extensions"))
+        Err(GpxError::MissingClosingTag("extensions"))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use core::panic;
 
-    use super::consume;
     use crate::{errors::GpxError, GpxVersion};
 
     #[test]

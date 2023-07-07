@@ -3,10 +3,11 @@ use std::io::BufReader;
 
 use gpx::{read, write};
 use gpx::{Gpx, Link, Waypoint};
+use gpx::parser::extensions::EmptyExtensions;
 
 #[test]
 fn gpx_writer_write_unknown_gpx_version() {
-    let gpx: Gpx = Default::default();
+    let gpx: Gpx<EmptyExtensions> = Default::default();
     let mut writer: Vec<u8> = Vec::new();
     // Should fail with unknown version.
     let result = write(&gpx, &mut writer);
@@ -43,7 +44,7 @@ fn check_write_for_example_file(filename: &str) {
     check_points_equal(&reference_gpx, &written_gpx);
 }
 
-fn read_test_gpx_file(filename: &str) -> Gpx {
+fn read_test_gpx_file(filename: &str) -> Gpx<EmptyExtensions> {
     let file = File::open(filename).unwrap();
     let reader = BufReader::new(file);
 
@@ -53,7 +54,7 @@ fn read_test_gpx_file(filename: &str) -> Gpx {
     result.unwrap()
 }
 
-fn write_and_reread_gpx(reference_gpx: &Gpx) -> Gpx {
+fn write_and_reread_gpx(reference_gpx: &Gpx<EmptyExtensions>) -> Gpx<EmptyExtensions> {
     let mut buffer: Vec<u8> = Vec::new();
     let result = write(reference_gpx, &mut buffer);
     assert!(result.is_ok());
@@ -62,7 +63,7 @@ fn write_and_reread_gpx(reference_gpx: &Gpx) -> Gpx {
     written_gpx
 }
 
-fn check_metadata_equal(reference_gpx: &Gpx, written_gpx: &Gpx) {
+fn check_metadata_equal(reference_gpx: &Gpx<EmptyExtensions>, written_gpx: &Gpx<EmptyExtensions>) {
     let reference = &reference_gpx.metadata;
     let written = &written_gpx.metadata;
     if reference.is_some() {
@@ -86,7 +87,7 @@ fn check_links_equal(reference: &Vec<Link>, written: &Vec<Link>) {
     }
 }
 
-fn check_points_equal(reference: &Gpx, written: &Gpx) {
+fn check_points_equal(reference: &Gpx<EmptyExtensions>, written: &Gpx<EmptyExtensions>) {
     check_waypoints_equal(&reference.waypoints, &written.waypoints);
     assert_eq!(reference.tracks.len(), written.tracks.len());
     for (r_track, w_track) in reference.tracks.iter().zip(written.tracks.iter()) {
@@ -98,7 +99,7 @@ fn check_points_equal(reference: &Gpx, written: &Gpx) {
     }
 }
 
-fn check_waypoints_equal(reference: &Vec<Waypoint>, written: &Vec<Waypoint>) {
+fn check_waypoints_equal(reference: &Vec<Waypoint<EmptyExtensions>>, written: &Vec<Waypoint<EmptyExtensions>>) {
     assert_eq!(reference.len(), written.len());
     for (r_wp, w_wp) in reference.iter().zip(written) {
         assert_eq!(r_wp.point(), w_wp.point());

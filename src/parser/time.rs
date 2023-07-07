@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 use time::{format_description::well_known::Iso8601, OffsetDateTime, PrimitiveDateTime, UtcOffset};
 
 use crate::errors::GpxResult;
-use crate::parser::{string, Context};
+use crate::parser::{Context, string};
+use crate::parser::extensions::WaypointExtensions;
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialOrd, PartialEq, Hash)]
 #[cfg_attr(feature = "use-serde", derive(Serialize, Deserialize))]
@@ -34,7 +35,7 @@ impl From<Time> for OffsetDateTime {
 }
 
 /// consume consumes an element as a time.
-pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<Time> {
+pub fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>) -> GpxResult<Time> {
     let time_str = string::consume(context, "time", false)?;
 
     // Try parsing as ISO 8601 with offset

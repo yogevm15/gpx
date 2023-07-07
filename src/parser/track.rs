@@ -5,12 +5,13 @@ use std::io::Read;
 use xml::reader::XmlEvent;
 
 use crate::errors::{GpxError, GpxResult};
-use crate::parser::{extensions, link, string, tracksegment, verify_starting_tag, Context};
+use crate::parser::{Context, extensions, link, string, tracksegment, verify_starting_tag};
+use crate::parser::extensions::WaypointExtensions;
 use crate::Track;
 
 /// consume consumes a GPX track from the `reader` until it ends.
-pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<Track> {
-    let mut track: Track = Default::default();
+pub fn consume<R: Read, E: WaypointExtensions + Default>(context: &mut Context<R, E>) -> GpxResult<Track<E>> {
+    let mut track: Track<E> = Default::default();
     verify_starting_tag(context, "trk")?;
 
     loop {
@@ -52,7 +53,7 @@ pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<Track> {
                     track.number = Some(string::consume(context, "number", false)?.parse()?)
                 }
                 "extensions" => {
-                    extensions::consume(context)?;
+                    extensions::EmptyExtensions::consume(context)?;
                 }
                 child => {
                     return Err(GpxError::InvalidChildElement(String::from(child), "track"));
@@ -79,8 +80,9 @@ pub fn consume<R: Read>(context: &mut Context<R>) -> GpxResult<Track> {
 
 #[cfg(test)]
 mod tests {
-    use super::consume;
     use crate::GpxVersion;
+
+    use super::consume;
 
     #[test]
     fn consume_full_track() {
